@@ -9,8 +9,8 @@ load_dotenv()
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD_IDS = [int(guild_id.strip()) for guild_id in os.getenv('TEST_GUILD_IDS').split(',')]
-intents = disnake.Intents.all()
-bot = commands.Bot(intents=intents, command_prefix=None)
+intents =  intents = disnake.Intents(messages=False, guilds=True, presences=True)
+bot = commands.InteractionBot(intents=intents)
 
 
 # SQLite setup
@@ -47,7 +47,7 @@ class LFGCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="lfgchannel", description="Set the LFG notification channel", guild_ids=[GUILD_IDS])
+    @commands.slash_command(name="lfgchannel", description="Set the LFG notification channel", guild_ids=GUILD_IDS)
     @commands.has_permissions(manage_guild=True)
     async def lfg_channel(self, ctx, channel: disnake.TextChannel):
         cursor.execute("INSERT OR REPLACE INTO lfg_channel (guild_id, channel_id) VALUES (?, ?)",
@@ -55,21 +55,21 @@ class LFGCommands(commands.Cog):
         conn.commit()
         await ctx.send(f"Set the LFG notification channel to {channel.mention}!", ephemeral=True)
 
-    @commands.slash_command(name="watchtitle", description="Add a title to be watched for LFG notifications", guild_ids=[GUILD_IDS])
+    @commands.slash_command(name="watchtitle", description="Add a title to be watched for LFG notifications", guild_ids=GUILD_IDS)
     @commands.has_permissions(manage_guild=True)
     async def watch_title(self, ctx, title: str):
         cursor.execute("INSERT INTO watched_titles (title) VALUES (?)", (title,))
         conn.commit()
         await ctx.send(f"Added '{title}' to watched titles.", ephemeral=True)
    
-    @commands.slash_command(name="unwatchtitle", description="Remove a title from being watched", guild_ids=[GUILD_IDS])
+    @commands.slash_command(name="unwatchtitle", description="Remove a title from being watched", guild_ids=GUILD_IDS)
     @commands.has_permissions(manage_guild=True)
     async def unwatch_title(self, ctx, title: str):
         cursor.execute("DELETE FROM watched_titles WHERE title=?", (title,))
         conn.commit()
         await ctx.send(f"Removed '{title}' from watched titles.", ephemeral=True)
 
-    @commands.slash_command(name="optout", description="Opt-out of LFG notifications", guild_ids=[GUILD_IDS])
+    @commands.slash_command(name="optout", description="Opt-out of LFG notifications", guild_ids=GUILD_IDS)
     async def opt_out(self, ctx):
         cursor.execute("INSERT INTO opted_out_users (user_id) VALUES (?)", (ctx.author.id,))
         cursor.execute("DELETE FROM cooldowns WHERE user_id=?", (ctx.author.id,))
