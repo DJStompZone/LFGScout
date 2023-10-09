@@ -1,0 +1,21 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Local data
+*.db
+
+# Virtual Environments
+venv/
+
+# MacOS
+.DS_Store
+
+# Pipenv
+Pipfile.lock
+
+# Jupyter Notebook
+.ipynb_checkpoints/
