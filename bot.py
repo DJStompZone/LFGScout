@@ -4,12 +4,15 @@ import sqlite3
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD_IDS = [int(guild_id.strip()) for guild_id in os.getenv('TEST_GUILD_IDS').split(',')]
-intents =  intents = disnake.Intents(messages=False, guilds=True, presences=True)
+intents =  intents = disnake.Intents(messages=False, members=True, guilds=True, presences=True)
 bot = commands.InteractionBot(intents=intents)
 
 
@@ -89,28 +92,32 @@ async def on_presence_update(before, after):
     if cursor.fetchone():
         return
 
-    if after.activities:
+    if after.activity:
         cursor.execute("SELECT title FROM watched_titles")
         watched_titles = {row[0] for row in cursor.fetchall()}
+        
+        if after.activity.name in watched_titles:  
+            # logging.info(f"Activity detected: {after.activity.name} for user {after.display_name}")
+            cursor.execute("SELECT last_notified FROM cooldowns WHERE user_id=?", (after.id,))
+            result = cursor.fetchone()
+            if result:
+                last_notified = datetime.fromisoformat(result[0])
+                if datetime.utcnow() - last_notified < timedelta(hours=1):
+                    logging.info(f"Cooldown active for user {after.display_name}. Skipping notification.")
+                    return
 
-        for activity in after.activities:
-
-            if activity.name in watched_titles:
-                cursor.execute("SELECT last_notified FROM cooldowns WHERE user_id=?", (after.id,))
-                result = cursor.fetchone()
-                if result:
-                    last_notified = datetime.fromisoformat(result[0])
-                    if datetime.utcnow() - last_notified < timedelta(minutes=10):
-                        return
-                    
-                cursor.execute("SELECT channel_id FROM lfg_channel WHERE guild_id=?", (after.guild.id,))
-                lfg_channel_id = cursor.fetchone()
-                if lfg_channel_id:
-                    lfg_channel = after.guild.get_channel(lfg_channel_id[0])
-                    if lfg_channel:
-                        await lfg_channel.send(f"{after.user.display_name} has started playing {activity.name}!")
-                        cursor.execute("INSERT OR REPLACE INTO cooldowns (user_id, last_notified) VALUES (?, ?)",
-                                       (after.id, datetime.utcnow().isoformat()))
-                        conn.commit()
+            cursor.execute("SELECT channel_id FROM lfg_channel WHERE guild_id=?", (after.guild.id,))
+            lfg_channel_id = cursor.fetchone()
+            if lfg_channel_id:
+                lfg_channel = after.guild.get_channel(lfg_channel_id[0])
+                if lfg_channel:
+                    # logging.info(f"Sending notification in {lfg_channel.name} for user {after.display_name}.")
+                    await lfg_channel.send(f"{after.display_name} has started playing {after.activity.name}!")
+                    cursor.execute("INSERT OR REPLACE INTO cooldowns (user_id, last_notified) VALUES (?, ?)",
+                                    (after.id, datetime.utcnow().isoformat()))
+                    conn.commit()
+                else:
+                    pass
+                    # logging.info(f"NOT sending notification in #{lfg_channel_id} for user {after.display_name}.")
 
 bot.run(TOKEN)
