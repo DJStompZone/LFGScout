@@ -23,7 +23,7 @@ jobs:
       matrix:
         language: [ 'python' ]
         os: [ 'ubuntu-20.04', 'ubuntu-22.04', 'macos-11', 'macos-12', 'macos-13', 'windows-2019', 'windows-latest' ]
-        python: [ 3.9.x, 3.10.x, 3.11.x, 3.12.x]
+        python: [ 3.9.x, 3.10.x, 3.11.x]
 
     steps:
     - name: Setup python
